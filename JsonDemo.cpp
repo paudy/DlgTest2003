@@ -11,9 +11,13 @@
 #include <algorithm> // sort
 #include <stdio.h>
 
+#include <fstream>
+
 #if defined(_MSC_VER)  &&  _MSC_VER >= 1310
 # pragma warning( disable: 4996 )     // disable fopen deprecation warning
 #endif
+
+int demo_main( int argc, const char *argv[] );
 
 static std::string
 readInputTestFile( const char *path )
@@ -212,8 +216,12 @@ parseCommandLine( int argc, const char *argv[],
    return 0;
 }
 
+int zdTestStruct2Json();
+
 int zdTestParseJson()
 {
+
+
    std::string strJsonIn = "";
    strJsonIn = "{\
       \"cmake_variants\" : [\
@@ -250,13 +258,37 @@ int zdTestParseJson()
    }";
 
     std::string actualPath = "d:\\zdtest2.json";
-	std::string rewritePath = "d:\\tmp.rewrite";
-    std::string rewriteActualPath = "d:\\tmp.actual-rewrite";
+	std::string rewritePath = "d:\\rewrite.txt";
+    std::string rewriteActualPath = "d:\\actual-rewrite.txt";
 	Json::Features features;
 	bool parseOnly = false;
     Json::Value root;
 
-    return parseAndSaveValueTree( strJsonIn, actualPath, "input", root, features, parseOnly );  
+    parseAndSaveValueTree( strJsonIn, actualPath, "input", root, features, parseOnly ); 
+	
+	//构建json并输出到文件
+	zdTestStruct2Json();
+
+	return 0;
+}
+
+int zdTestStruct2Json()
+{
+	char szContent[]={"this is test string for jsoncpp by zdleek"};
+	Json::Value root;
+	root["nID"] = 10;
+	root["nLen"] = strlen(szContent);
+	root["szDesc"] = szContent;
+	
+	Json::StyledWriter swriter;
+	std::ofstream ofs;
+
+	std::string str = swriter.write(root);
+	ofs.open("d:\\example_styled_writer.json");
+	ofs << str;
+	ofs.close();
+
+	return 0;
 }
 
 int demo_main( int argc, const char *argv[] )
@@ -265,11 +297,13 @@ int demo_main( int argc, const char *argv[] )
    Json::Features features;
    bool parseOnly;
    int exitCode = parseCommandLine( argc, argv, features, path, parseOnly );
-   if ( exitCode != 0 )
-   {
-      return exitCode;
-   }
-
+   ///del by zdleek
+   //if ( exitCode != 0 )
+   //{
+   //   return exitCode;
+   //}
+	
+   path =  "d:\\agent_vmw7.json";
    try
    {
       std::string input = readInputTestFile( path.c_str() );
@@ -280,6 +314,7 @@ int demo_main( int argc, const char *argv[] )
       }
 
       std::string basePath = removeSuffix( argv[1], ".json" );
+	  basePath = "d:\\";
       if ( !parseOnly  &&  basePath.empty() )
       {
          printf( "Bad input path. Path does not end with '.expected':\n%s\n", path.c_str() );
