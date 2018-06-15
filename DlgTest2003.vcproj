@@ -134,6 +134,7 @@ copy /y ..\..\..\ÔËĞĞ\Release\Ansi\$(TargetFileName) ..\..\..\·¢²¼×é¼ş\·şÎñÆ÷×é¼
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
+				AdditionalIncludeDirectories=""
 				PreprocessorDefinitions="WIN32;_WINDOWS;_DEBUG;_UNICODE;"
 				MinimalRebuild="TRUE"
 				BasicRuntimeChecks="3"
