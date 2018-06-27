@@ -216,6 +216,7 @@ parseCommandLine( int argc, const char *argv[],
    return 0;
 }
 
+int zdTestConstructJson();
 int zdTestStruct2Json();
 
 int zdTestParseJson()
@@ -286,6 +287,74 @@ int zdTestStruct2Json()
 	std::string str = swriter.write(root);
 	ofs.open("d:\\example_styled_writer.json");
 	ofs << str;
+	ofs.close();
+
+	return 0;
+}
+
+int zdTestConstructJson()
+{
+	Json::Value root;
+	Json::Value vTodayRate1;
+	Json::Value vTodayRate2;
+	Json::Value vTodayRate;
+
+	wchar_t szRate[10][20]={{L"0.1"},{L"0.2"},{L"0.3"},{L"0.4"},{L"0.5"}, {L"0.6"}, {L"0.7"}, {L"0.8"}, {L"0.9"}, {L"1.0"}};
+
+	//构建json数组成员
+	for(int i = 0; i < 10; i++)
+	{
+		CT2CA caTodayRate(szRate[i]);
+		vTodayRate1["TodayRate"]= caTodayRate.m_psz;
+		root["TodayOpenRate"].append(vTodayRate1);
+	}
+	
+	vTodayRate["TodayRate01"] = 0.1;
+	vTodayRate["TodayRate02"] = 0.2;
+	vTodayRate["TodayRate03"] = 0.3;
+	vTodayRate["TodayRate04"] = 0.4;
+	vTodayRate["TodayRate05"] = 0.5;
+	vTodayRate["TodayRate06"] = 0.6;
+	vTodayRate["TodayRate07"] = 0.7;
+	vTodayRate["TodayRate08"] = 0.8;
+	vTodayRate["TodayRate09"] = 0.9;
+	vTodayRate["TodayRate10"] = 1.0;
+	root["TodayOpenRate2"] = vTodayRate;
+
+	/////拆分【双,单,大,小】四种比率
+	std::string str = "0.11,0.12,0.13,0.14";
+	size_t nPosBegin = 0;
+	size_t nPos =0;
+	std::string str2;
+	const char *szKeys[4] = {"RateDouble", "RateSingle", "RateBig", "RateSmall"};
+	for(int n = 0; n < 4; n++)
+	{
+		nPos = str.find(',', nPosBegin);
+		str2.clear();
+		if(nPos !=  std::string::npos)
+		{
+			str2 = str.substr( nPosBegin, nPos - nPosBegin);
+			nPosBegin = nPos+1;
+			vTodayRate2[szKeys[n]] = str2;
+		}
+		else 
+		{
+			str2 = str.substr(nPosBegin);
+			vTodayRate2[szKeys[n]] = str2;
+			break;
+		}				
+	}
+	root["TodayOpenRate3"].append(vTodayRate2);
+	root["TodayOpenRate3"].append(vTodayRate2);
+	root["TodayOpenRate3"].append(vTodayRate2);
+	////////////////
+
+	std::string strJson = root.toStyledString();
+	
+	std::ofstream ofs;
+	//std::string str = swriter.write(root);
+	ofs.open("d:\\json_styled_string.json");
+	ofs << strJson;
 	ofs.close();
 
 	return 0;

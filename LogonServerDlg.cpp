@@ -15,6 +15,7 @@ END_MESSAGE_MAP()
 
 //////////////////////////////////////////////////////////////////////////////////
 extern int zdTestParseJson();
+extern int zdTestConstructJson();
 
 //构造函数
 CLogonServerDlg::CLogonServerDlg() : CDialog(IDD_DLG_LOGON_SERVER)
@@ -39,7 +40,7 @@ BOOL CLogonServerDlg::OnInitDialog()
 	__super::OnInitDialog();
 
 	//设置标题
-	SetWindowText(TEXT("ConsoleTest2003 -- [ 停止 ]"));
+	SetWindowText(TEXT("DlgTest2003 -- [ 停止 ]"));
 
 	//设置图标
 	HICON hIcon=LoadIcon(AfxGetInstanceHandle(),MAKEINTRESOURCE(IDR_MAINFRAME));
@@ -66,7 +67,7 @@ VOID CLogonServerDlg::OnCancel()
 	////关闭询问
 	//if (m_ServiceUnits.GetServiceStatus()!=ServiceStatus_Stop)
 	//{
-		LPCTSTR pszQuestion=TEXT("ConsoleTest2003正在运行中，您确实要退出程序吗？");
+		LPCTSTR pszQuestion=TEXT("DlgTest2003正在运行中，您确实要退出程序吗？");
 		if (AfxMessageBox(pszQuestion,MB_YESNO|MB_DEFBUTTON2|MB_ICONQUESTION)!=IDYES) return;
 	//}
 
@@ -113,6 +114,9 @@ VOID CLogonServerDlg::OnBnClickedStartService()
 	//sms_wrap.HttpPostSms("18850067319");
 
 	zdTestParseJson();
+
+	zdTestConstructJson();
+
 	return;
 }
 
