@@ -6,7 +6,7 @@
 struct tagSmsCode
 {
 	int		nRandCode;			//随机验证码
-	char	szMobileID[20];		//手机号
+	char	szMobileID[12];		//手机号
 	time_t tmValidate;			//有效时限
 
 	tagSmsCode(){memset(this, 0, sizeof(tagSmsCode));}
@@ -22,10 +22,8 @@ public:
 	~CSmsVerifyCode();
 
 public:
-	int HttpPostSms(char *szMobile); //通过SDK接口下发短信验证码
-	
-	int RestApiSendSms(char* szMobile);
-
+	int HttpPostSms(char *szMobile); //通过ihuyi.com SDK接口下发短信验证码
+	int RestApiSendSms(char* szMobile); //通过wxchina.com接口下发短信验证码
 	int	VerifySmsCode(const char *szVerifyCode, const char *szMobile);					//匹配手机号与验证码
 
 private:

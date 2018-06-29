@@ -16,12 +16,13 @@
 #define MAXSUB  2000
 #define MAXPARAM 2048
 
+//ihuyi.com短信接口
 char *szSmsHost = "106.ihuyi.com";
 char *send_sms_uri = "/webservice/sms.php?method=Submit&format=json";
 
 ///玄武短信接口http_post服务器ip
-//char *szRESTAPIHost = "116.31.71.146"; //电信
-char *szRESTAPIHost = "122.13.18.210"; //联通
+char *szRESTAPIHost = "116.31.71.146"; //电信
+//char *szRESTAPIHost = "122.13.18.210"; //联通
 //char *szRESTAPIHost = "183.232.76.34"; //移动
 char *rest_sms_uri = "/api/v1.0.0/message/mass/send";
 
@@ -61,15 +62,16 @@ CSmsVerifyCode::~CSmsVerifyCode()
 	m_SmsCodeList.clear();
 }
 
+//通过ihuyi.com SDK接口下发短信验证码
 int CSmsVerifyCode::HttpPostSms(char *szMobile)
 {
 	//生成验证码
 	int nCode = MakeSmsCode(szMobile); 
 	//发送验证码
-	SendVerifyCodeBySmsSdk(szMobile, nCode);
-	return 0;
+	return SendVerifyCodeBySmsSdk(szMobile, nCode);
 }
 
+//通过wxchina.com接口下发短信验证码
 int CSmsVerifyCode::RestApiSendSms(char* szMobile)
 {
 	//生成验证码
@@ -78,35 +80,6 @@ int CSmsVerifyCode::RestApiSendSms(char* szMobile)
 	SendVerifyCodeByRestAPI(szMobile, nCode);
 	return 0;
 }
-
-////* 发http post请求
-//size_t CSmsVerifyCode::http_post(char *page, char *poststr)
-//{
-//    char sendline[MAXLINE + 1]/*, recvline[MAXLINE + 1]*/;
-//    size_t n=0;
-//    _snprintf(sendline, MAXSUB,
-//        "POST %s HTTP/1.0\r\n"
-//        "Host: %s\r\n"
-//        "Content-type: application/x-www-form-urlencoded\r\n"
-//        "Content-length: %zu\r\n\r\n"
-//        "%s", page, szSmsHost, strlen(poststr), poststr);
-//
-//    //write(basefd, sendline, strlen(sendline));
-//    //while ((n = read(basefd, recvline, MAXLINE)) > 0) {
-//    //    recvline[n] = '\0';
-//    //    printf("%s", recvline);
-//    //}
-//    return n;
-//}
-//
-////* 发送短信
-//size_t CSmsVerifyCode::send_sms(char *account, char *password, char *mobile, char *content)
-//{
-//    char params[MAXPARAM + 1];
-//    char *cp = params;
-//    sprintf(cp,"account=%s&password=%s&mobile=%s&content=%s", account, password, mobile, content);
-//    return http_post(send_sms_uri, cp);
-//}
 
 //构建 htttp_post 字符串
 int MakeHttpPostString(char *account, char *password, char *mobile, char *content, char* szBuffOut)
@@ -194,6 +167,8 @@ int CSmsVerifyCode::SendVerifyCodeBySmsSdk(char *szMobile, int nCode)
 	char* szBuffOut = Buffer;
 	MakeHttpPostString(account, password, mobile, content, szBuffOut);
 
+	USES_CONVERSION;
+	int errcode = 0;
     //发送、接收消息
     for (;;) 
 	{
@@ -205,13 +180,14 @@ int CSmsVerifyCode::SendVerifyCodeBySmsSdk(char *szMobile, int nCode)
         }
         else if (ret == SOCKET_ERROR) {
             printf("send() 失败: %d\n" , WSAGetLastError());
+			errcode = 2;
             break;
         }
         printf("Send %d bytes\n" , ret);
 		
 		////zdtestlog
 		//TCHAR szInfo[560] = {0};
-		//wsprintf(szInfo, TEXT("%s 发送HTTP POST, SMS验证码\n send %d bytes:\n\t%s\n  "),   AnsiToUnicode(__FUNCTION__), ret, Buffer);
+		//wsprintf(szInfo, TEXT("%s 发送HTTP POST, SMS验证码\n send %d bytes:\n\t%s\n  "),   AnsiToUnicode(__FUNCTION__), ret, A2W(Buffer));
 		//CTraceService::TraceString(szInfo, TraceLevel_Debug);
 
         //接收从服务器来的消息
@@ -221,15 +197,15 @@ int CSmsVerifyCode::SendVerifyCodeBySmsSdk(char *szMobile, int nCode)
         }
         else if (ret == SOCKET_ERROR) {
             printf("recv() 失败: %d\n" , WSAGetLastError());
+			errcode = 3;
             break;
         }
 
         Buffer[ret] = '\0';
-        printf("Recv %d bytes:\n\t%s\n" , ret , Buffer);
-
-		////zdtestlog
+        //printf("Recv %d bytes:\n\t%s\n" , ret , Buffer);
+		//zdtestlog
 		////TCHAR szInfo[560] = {0};
-		//wsprintf(szInfo, TEXT("%s 收到SMS接口返回消息\n Recv %d bytes:\n\t%s\n  "),   AnsiToUnicode(__FUNCTION__), ret, Buffer);
+		//wsprintf(szInfo, TEXT("%s 收到SMS接口返回消息\n Recv %d bytes:\n\t%s\n  "),   AnsiToUnicode(__FUNCTION__), ret, A2W(Buffer));
 		//CTraceService::TraceString(szInfo, TraceLevel_Debug);
 		break;
     }
@@ -238,24 +214,42 @@ int CSmsVerifyCode::SendVerifyCodeBySmsSdk(char *szMobile, int nCode)
     closesocket(m_Socket);
     WSACleanup();    //清理
 	m_Socket = NULL;
-    return 0;
+    return errcode;
 }
 
-
-char* getMassJsonContent()
+char* getMassJsonContent(const char *mobile, const char *content, char* szBuffOut)
 {
-        return "{\n" 
-                    "    \"batchName\": \"ZDTESTansi\",\n" 
-                    "    \"items\": [\n" 
-                    "        {\n" 
-                    "            \"to\": \"18850067319\",\n" 
-                    "            \"customMsgID\": \"\"\n" 
-                    "        }\n" 
-                    "    ],\n" 
-                    "    \"content\": \"zdtestUTF-8编码短信content666\",\n" 
-                    "    \"msgType\": \"sms\",\n" 
-                    "    \"bizType\": \"100\"\n" 
-                    "}";
+	const char *formatStr = "{\n" 
+                "    \"batchName\": \"ZDTESTansi\",\n" 
+                "    \"items\": [\n" 
+                "        {\n" 
+                "            \"to\": \"%s\",\n" 
+                "            \"customMsgID\": \"\"\n" 
+                "        }\n" 
+                "    ],\n" 
+                "    \"content\": \"%s\",\n" 
+                "    \"msgType\": \"sms\",\n" 
+                "    \"bizType\": \"100\"\n" 
+                "}";
+    
+	sprintf(szBuffOut,formatStr, mobile, content);
+	
+	return szBuffOut;
+		
+
+	// char *formatStr  = "{\n" 
+ //               "    \"batchName\": \"ZDTESTansi\",\n" 
+ //               "    \"items\": [\n" 
+ //               "        {\n" 
+ //               "            \"to\": \"18850067319\",\n" 
+ //               "            \"customMsgID\": \"\"\n" 
+ //               "        }\n" 
+ //               "    ],\n" 
+ //               "    \"content\": \"短信验证码xxxxxxUTF-8编码\",\n" 
+ //               "    \"msgType\": \"sms\",\n" 
+ //               "    \"bizType\": \"100\"\n" 
+ //               "}";
+
 }
 
 //构建 RestApi 字符串
@@ -263,9 +257,10 @@ int MakeRestApiString(char *account, char *password, char *mobile, char *content
 {
 	char params[MAXPARAM + 1]={0};
     char *poststr = params;
-	const char * fmtSmsJson = getMassJsonContent();
-    sprintf(poststr, fmtSmsJson, account, password, mobile, content);
-	
+	//const char * fmtSmsJson = getMassJsonContent();
+	//sprintf(poststr, fmtSmsJson, mobile, content);
+	getMassJsonContent(mobile, content, poststr);
+
 	//转换为UTF-8编码
 	std::string strAnsi = poststr;
 	std::wstring wPoststr = ANSIToUnicode(strAnsi);
@@ -274,7 +269,17 @@ int MakeRestApiString(char *account, char *password, char *mobile, char *content
 	char* pszUtf8 = params;
 	uint32_t nSizeUtf8 = MAXPARAM;
 	uint32_t uLen = Unicode16ToUTF8((const uint16_t*)pszUtf16, nSizeUnicode16, pszUtf8, nSizeUtf8); 
-	
+	poststr = pszUtf8;
+
+	////生成验证密钥(暂未实现)
+	//char szAuthKey[512]={0};
+	//char *MD5Pwd = MD5Enc(password);
+	//strcpy(szAuthKey, account);
+	//strcat(szAuthKey,":");	
+	//strcat(szAuthKey, MD5Pwd);
+	//Base64Enc(szAuthKey);
+
+	//**直接使用在线工具进行MD5和BASE64编码，得出结果char* Authorization
 	const char* Authorization = "eG16eXdsQHhtenl3bDozNTIzOTA3QUNENTY4RDFGRkQyMUNGNDU5MDQ2QzZCMg=="; //密钥，Base64编码的用户名和密码组合，格式为Base64("用户名:MD5(密码)"）	
 	_snprintf(szBuffOut, MAXSUB,
         "POST %s HTTP/1.0\n"
@@ -286,7 +291,6 @@ int MakeRestApiString(char *account, char *password, char *mobile, char *content
         "%s\n", 
 		rest_sms_uri, szRESTAPIHost, strlen(poststr),Authorization, poststr);
 
-	//array('Content-Type: application/json; charset=utf-8', 'Content-Length:' . strlen ($arr), 'Accept: application/json', 'Authorization: eHdUZXN0MUB4d1Rlc3QxOmUxMGFkYzM5NDliYTU5YWJiZTU2ZTA1N2YyMGY4ODNl==')
 	return 0;
 }
 
@@ -349,8 +353,7 @@ int CSmsVerifyCode::SendVerifyCodeByRestAPI(char *szMobile, int nCode)
 
     //用户名
     char *account = "xmzywl@xmzywl";
-
-    //密码
+    //密码(MD5)
     char *password = "3523907ACD568D1FFD21CF459046C6B2";
 
     //手机号
@@ -358,9 +361,8 @@ int CSmsVerifyCode::SendVerifyCodeByRestAPI(char *szMobile, int nCode)
 	strncpy(mobile, szMobile, sizeof(mobile)); //"18850067319";
 
     //短信内容
-	//char *message = "您的验证码是：%06d。请不要把验证码泄露给其他人。";
-	char *message = getMassJsonContent();
-	char content[4096] = {0};
+	char *message = "您的验证码是：%06d。请不要把验证码泄露给其他人。";
+	char content[256] = {0};
 	sprintf(content, message, nCode);
 
 	char* szBuffOut = Buffer;
@@ -379,7 +381,7 @@ int CSmsVerifyCode::SendVerifyCodeByRestAPI(char *szMobile, int nCode)
             printf("send() 失败: %d\n" , WSAGetLastError());
             break;
         }
-        printf("Send %d bytes\n" , ret);
+        //printf("Send %d bytes\n" , ret);
 		
 		////zdtestlog
 		//TCHAR szInfo[560] = {0};
@@ -398,9 +400,9 @@ int CSmsVerifyCode::SendVerifyCodeByRestAPI(char *szMobile, int nCode)
         }
 
         Buffer[ret] = '\0';
-        printf("Recv %d bytes:\n\t%s\n" , ret , Buffer);
+        //printf("Recv %d bytes:\n\t%s\n" , ret , Buffer);
 
-		////zdtestlog
+		//zdtestlog
 		//TCHAR szInfo[560] = {0};
 		//wsprintf(szInfo, TEXT("%s 收到SMS接口返回消息\n Recv %d bytes:\n\t%s\n  "),   AnsiToUnicode(__FUNCTION__), ret, Buffer);
 		//CTraceService::TraceString(szInfo, TraceLevel_Debug);
@@ -413,6 +415,7 @@ int CSmsVerifyCode::SendVerifyCodeByRestAPI(char *szMobile, int nCode)
 	m_Socket2 = NULL;
     return 0;
 }
+
 
 //生成随机验证码
 int	CSmsVerifyCode::MakeSmsCode(const char *szMobile)				
@@ -469,7 +472,7 @@ int	CSmsVerifyCode::SendSmsCode(tagSmsCode *pSmsCode)
 	return 0;
 }
 
-//匹配手机号与验证码,返回1表示成功
+//匹配手机号与验证码,返回0表示成功
 int	CSmsVerifyCode::VerifySmsCode(const char *szVerifyCode, const char *szMobile)			
 {
 	int nCode = atoi(szVerifyCode);
@@ -477,17 +480,17 @@ int	CSmsVerifyCode::VerifySmsCode(const char *szVerifyCode, const char *szMobile
 	itr = m_SmsCodeList.find(nCode);
 	if(itr != m_SmsCodeList.end())
 	{
-		if(strnicmp(szMobile, itr->second->szMobileID, sizeof(itr->second->szMobileID)) == 0)
+		if(itr->second && strnicmp(szMobile, itr->second->szMobileID, sizeof(itr->second->szMobileID)-1) == 0)
 		{
 			time_t tNow = time(NULL);
-			if((tNow - itr->second->tmValidate) < 300)
+			if((tNow - itr->second->tmValidate) < 360) //6分钟以内
 			{
-				return 1;
+				return 0;
 			}
 		}		
 	}
 
-	return 0;
+	return -1;
 }
 
 //清除已经失效的验证码
@@ -525,3 +528,5 @@ int	CSmsVerifyCode::RemoveVerifyCode(const char *szVerifyCode)
 
 	return 0;
 }
+
+
