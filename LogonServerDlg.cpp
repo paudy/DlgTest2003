@@ -110,12 +110,13 @@ VOID CLogonServerDlg::OnBnClickedStartService()
 {
 	//zdTest1();
 	
-	//CSmsVerifyCode sms_wrap;
+	CSmsVerifyCode sms_wrap;
 	//sms_wrap.HttpPostSms("18850067319");
+	sms_wrap.RestApiSendSms("18850067319");
 
-	zdTestParseJson();
+	//zdTestParseJson();
 
-	zdTestConstructJson();
+	//zdTestConstructJson();
 
 	return;
 }

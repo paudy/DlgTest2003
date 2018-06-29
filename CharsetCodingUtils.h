@@ -1,7 +1,10 @@
-//Unicode16תANSI
-string UnicodeToANSI(const wchar_t* str)
+#pragma once
+#include <string>
+
+//Unicode16转ANSI
+static std::string UnicodeToANSI(const wchar_t* str)
 {
-    char*     pElementText;
+    char*  pElementText;
     int    iTextLen;
     // wide char to multi char
     iTextLen = WideCharToMultiByte( CP_ACP,
@@ -22,15 +25,15 @@ string UnicodeToANSI(const wchar_t* str)
         iTextLen,
         NULL,
         NULL );
-    string strText;
+    std::string strText;
     strText = pElementText;
     delete[] pElementText;
-?
-    return strText;
+
+	return strText;
 }
 
-//ANSIתUnicode16:
-wstring ANSIToUnicode(const string& str)
+//ANSI转Unicode16:
+static std::wstring ANSIToUnicode(const std::string& str)
 {
     int  len = 0;
     len = str.length();
@@ -49,28 +52,28 @@ wstring ANSIToUnicode(const string& str)
         -1,
         (LPWSTR)pUnicode,
         unicodeLen ); 
-    wstring  rt; 
+    std::wstring  rt; 
     rt = ( wchar_t* )pUnicode;
     delete  pUnicode;
-?
+
     return  rt; 
 }
 
 
-//Unicode16תUTF-8 :
+//Unicode16转UTF-8 :
 typedef unsigned __int32 uint32_t;
 typedef unsigned short  uint16_t;
-?
-uint32_t Unicode16ToUTF8(IN const uint16_t* pszUtf16, IN uint32_t nSizeUtf16, IN char* pszUtf8, IN uint32_t nSizeUtf8)  
+
+static uint32_t Unicode16ToUTF8(IN const uint16_t* pszUtf16, IN uint32_t nSizeUnicode16, IN char* pszUtf8, IN uint32_t nSizeUtf8)  
 {  
     if (0 == nSizeUtf8)
     {
-        return (nSizeUtf16 * 3 + 1);
+        return (nSizeUnicode16 * 3 + 1);
     }
-?
+
     uint32_t i = 0, count = 0;       
     uint16_t wch;  
-    for(i=0; i < nSizeUtf16; i++) 
+    for(i=0; i < nSizeUnicode16; i++) 
     {
         wch = *(uint16_t*)&pszUtf16[i];       
         if( wch < 0x80)  
@@ -111,7 +114,7 @@ uint32_t Unicode16ToUTF8(IN const uint16_t* pszUtf16, IN uint32_t nSizeUtf16, IN
             printf("error/n");  
         }  
     }
-?
+
     if (count < nSizeUtf8)
     {
         pszUtf8[count] = 0;
@@ -122,23 +125,23 @@ uint32_t Unicode16ToUTF8(IN const uint16_t* pszUtf16, IN uint32_t nSizeUtf16, IN
         pszUtf8[nSizeUtf8-1] = 0;
         return nSizeUtf8;
     }
-?
+
     return 0;  
 }
 
 
-//UTF-8תUnicode16:
-uint32_t UTF8ToUnicode16(IN const unsigned char* pszUtf8, IN uint32_t nSizeUtf8, OUT uint16_t* pszUtf16, IN uint32_t nSizeUtf16)  
+//UTF-8转Unicode16:
+static uint32_t UTF8ToUnicode16(IN const unsigned char* pszUtf8, IN uint32_t nSizeUtf8, OUT uint16_t* pszUtf16, IN uint32_t nSizeUnicode16)  
 {  
-    if (0 == nSizeUtf16)
+    if (0 == nSizeUnicode16)
     {
         return (nSizeUtf8 + 1);
     }
-?
+
     uint32_t count = 0, i = 0;  
     uint16_t wch;  
     uint16_t *p;  
-    for(i = 0; count < nSizeUtf8 && i < nSizeUtf16; i++) 
+    for(i = 0; count < nSizeUtf8 && i < nSizeUnicode16; i++) 
     {
         p = (uint16_t*)&pszUtf16[i];  
          
@@ -169,16 +172,16 @@ uint32_t UTF8ToUnicode16(IN const unsigned char* pszUtf8, IN uint32_t nSizeUtf8,
         }  
         *p = wch;  
     }  
-?
-    if (i < nSizeUtf16)
+
+    if (i < nSizeUnicode16)
     {
         pszUtf16[i] = 0;
         return (i + 1);
     }
-    else if (nSizeUtf16 > 0)
+    else if (nSizeUnicode16 > 0)
     {
-        pszUtf16[nSizeUtf16-1] = 0;
-        return nSizeUtf16;
+        pszUtf16[nSizeUnicode16-1] = 0;
+        return nSizeUnicode16;
     }
  
     return 0;  

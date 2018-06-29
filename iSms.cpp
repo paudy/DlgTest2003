@@ -6,6 +6,7 @@
 #include <winsock2.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "CharsetCodingUtils.h"
 #include "isms.h"
 
 #pragma comment(lib , "ws2_32.lib")
@@ -17,7 +18,15 @@
 
 char *szSmsHost = "106.ihuyi.com";
 char *send_sms_uri = "/webservice/sms.php?method=Submit&format=json";
+
+///玄武短信接口http_post服务器ip
+//char *szRESTAPIHost = "116.31.71.146"; //电信
+char *szRESTAPIHost = "122.13.18.210"; //联通
+//char *szRESTAPIHost = "183.232.76.34"; //移动
+char *rest_sms_uri = "/api/v1.0.0/message/mass/send";
+
 SOCKET m_Socket=NULL;
+SOCKET m_Socket2=NULL;
 
 CSmsVerifyCode::CSmsVerifyCode()
 {
@@ -58,6 +67,15 @@ int CSmsVerifyCode::HttpPostSms(char *szMobile)
 	int nCode = MakeSmsCode(szMobile); 
 	//发送验证码
 	SendVerifyCodeBySmsSdk(szMobile, nCode);
+	return 0;
+}
+
+int CSmsVerifyCode::RestApiSendSms(char* szMobile)
+{
+	//生成验证码
+	int nCode = MakeSmsCode(szMobile); 
+	//发送验证码
+	SendVerifyCodeByRestAPI(szMobile, nCode);
 	return 0;
 }
 
@@ -220,6 +238,179 @@ int CSmsVerifyCode::SendVerifyCodeBySmsSdk(char *szMobile, int nCode)
     closesocket(m_Socket);
     WSACleanup();    //清理
 	m_Socket = NULL;
+    return 0;
+}
+
+
+char* getMassJsonContent()
+{
+        return "{\n" 
+                    "    \"batchName\": \"ZDTESTansi\",\n" 
+                    "    \"items\": [\n" 
+                    "        {\n" 
+                    "            \"to\": \"18850067319\",\n" 
+                    "            \"customMsgID\": \"\"\n" 
+                    "        }\n" 
+                    "    ],\n" 
+                    "    \"content\": \"zdtestUTF-8编码短信content666\",\n" 
+                    "    \"msgType\": \"sms\",\n" 
+                    "    \"bizType\": \"100\"\n" 
+                    "}";
+}
+
+//构建 RestApi 字符串
+int MakeRestApiString(char *account, char *password, char *mobile, char *content, char* szBuffOut)
+{
+	char params[MAXPARAM + 1]={0};
+    char *poststr = params;
+	const char * fmtSmsJson = getMassJsonContent();
+    sprintf(poststr, fmtSmsJson, account, password, mobile, content);
+	
+	//转换为UTF-8编码
+	std::string strAnsi = poststr;
+	std::wstring wPoststr = ANSIToUnicode(strAnsi);
+	const wchar_t* pszUtf16 = wPoststr.c_str();
+	uint32_t nSizeUnicode16 = wPoststr.length();
+	char* pszUtf8 = params;
+	uint32_t nSizeUtf8 = MAXPARAM;
+	uint32_t uLen = Unicode16ToUTF8((const uint16_t*)pszUtf16, nSizeUnicode16, pszUtf8, nSizeUtf8); 
+	
+	const char* Authorization = "eG16eXdsQHhtenl3bDozNTIzOTA3QUNENTY4RDFGRkQyMUNGNDU5MDQ2QzZCMg=="; //密钥，Base64编码的用户名和密码组合，格式为Base64("用户名:MD5(密码)"）	
+	_snprintf(szBuffOut, MAXSUB,
+        "POST %s HTTP/1.0\n"
+		"Host: %s\n"
+        "Content-Type: application/json;charset=UTF-8\n"
+        "Content-length: %u\n"
+		"Accept: application/json\n"
+		"Authorization: %s\n\n"
+        "%s\n", 
+		rest_sms_uri, szRESTAPIHost, strlen(poststr),Authorization, poststr);
+
+	//array('Content-Type: application/json; charset=utf-8', 'Content-Length:' . strlen ($arr), 'Accept: application/json', 'Authorization: eHdUZXN0MUB4d1Rlc3QxOmUxMGFkYzM5NDliYTU5YWJiZTU2ZTA1N2YyMGY4ODNl==')
+	return 0;
+}
+
+int CSmsVerifyCode::SendVerifyCodeByRestAPI(char *szMobile, int nCode)
+{
+	
+	WSADATA wsd;
+    //SOCKET sClient;
+	char Buffer[BUFSIZE]={0};
+    int ret;
+    struct sockaddr_in server;
+    unsigned short port = 80;
+    struct hostent *host = NULL;
+	
+	//加载Winsock DLL
+    if (WSAStartup(MAKEWORD(2 , 2) , &wsd) != 0) {
+        printf("Winsock    初始化失败!\n");
+        return 1;
+    }
+
+	//创建Socket
+    m_Socket2 = socket(AF_INET , SOCK_STREAM , IPPROTO_TCP);
+    if (m_Socket2 == INVALID_SOCKET) {
+        printf("socket() 失败: %d\n" , WSAGetLastError());
+		////zdtestlog
+		//TCHAR szInfo[260] = {0};
+		//wsprintf(szInfo, TEXT("%s  创建socket() 失败: %d\n:  "),   AnsiToUnicode(__FUNCTION__), WSAGetLastError());
+		//CTraceService::TraceString(szInfo, TraceLevel_Debug);
+        return 1;
+    }
+
+    //指定服务器地址
+    server.sin_family = AF_INET;
+    server.sin_port = htons(9051);
+    server.sin_addr.s_addr = inet_addr(szRESTAPIHost);
+
+    if (server.sin_addr.s_addr == INADDR_NONE) {
+        host = gethostbyname(szRESTAPIHost);    //输入的地址可能是域名等
+        if (host == NULL) {
+            printf("无法解析服务端地址: %s\n" , szRESTAPIHost);
+            return 1;
+        }
+        CopyMemory(&server.sin_addr ,
+                    host->h_addr_list[0] ,
+                    host->h_length);
+    }
+    /*与服务器建立连接*/
+    if (connect(m_Socket2 , (struct sockaddr*)&server ,
+                    sizeof(server)) == SOCKET_ERROR) {
+        printf("connect() 失败: %d\n" , WSAGetLastError());
+        return 1;
+    }
+	
+	int nNetTimeout= 5000;
+    setsockopt(m_Socket2,SOL_SOCKET,SO_SNDTIMEO,(char*)&nNetTimeout,sizeof(nNetTimeout)); 
+	if (SOCKET_ERROR ==  setsockopt(m_Socket2,SOL_SOCKET, SO_RCVTIMEO, (char *)&nNetTimeout,sizeof(int))) 
+	{ 
+			printf("Set Ser_RecTIMEO error !\r\n"); 
+	} 
+
+    //用户名
+    char *account = "xmzywl@xmzywl";
+
+    //密码
+    char *password = "3523907ACD568D1FFD21CF459046C6B2";
+
+    //手机号
+	char mobile[13] ={0};
+	strncpy(mobile, szMobile, sizeof(mobile)); //"18850067319";
+
+    //短信内容
+	//char *message = "您的验证码是：%06d。请不要把验证码泄露给其他人。";
+	char *message = getMassJsonContent();
+	char content[4096] = {0};
+	sprintf(content, message, nCode);
+
+	char* szBuffOut = Buffer;
+	MakeRestApiString(account, password, mobile, content, szBuffOut);
+
+    //发送、接收消息
+    for (;;) 
+	{
+
+        //向服务器发送消息
+        ret = send(m_Socket2 , Buffer , strlen(Buffer) , 0);
+        if (ret == 0) {
+            break;
+        }
+        else if (ret == SOCKET_ERROR) {
+            printf("send() 失败: %d\n" , WSAGetLastError());
+            break;
+        }
+        printf("Send %d bytes\n" , ret);
+		
+		////zdtestlog
+		//TCHAR szInfo[560] = {0};
+		//wsprintf(szInfo, TEXT("%s 发送HTTP POST, SMS验证码\n send %d bytes:\n\t%s\n  "),   AnsiToUnicode(__FUNCTION__), ret, Buffer);
+		//CTraceService::TraceString(szInfo, TraceLevel_Debug);
+
+        //接收从服务器来的消息
+        ret = recv(m_Socket2 , Buffer , BUFSIZE , 0);
+        if (ret == 0) {
+            break;
+        }
+        else if (ret == SOCKET_ERROR) {
+			char szErr[128] ={0};
+            sprintf(szErr,"recv() 失败: %d\n" , WSAGetLastError());
+            break;
+        }
+
+        Buffer[ret] = '\0';
+        printf("Recv %d bytes:\n\t%s\n" , ret , Buffer);
+
+		////zdtestlog
+		//TCHAR szInfo[560] = {0};
+		//wsprintf(szInfo, TEXT("%s 收到SMS接口返回消息\n Recv %d bytes:\n\t%s\n  "),   AnsiToUnicode(__FUNCTION__), ret, Buffer);
+		//CTraceService::TraceString(szInfo, TraceLevel_Debug);
+		break;
+    }
+
+    //用完了，关闭socket句柄(文件描述符)
+    closesocket(m_Socket2);
+    WSACleanup();    //清理
+	m_Socket2 = NULL;
     return 0;
 }
 

@@ -23,6 +23,9 @@ public:
 
 public:
 	int HttpPostSms(char *szMobile); //通过SDK接口下发短信验证码
+	
+	int RestApiSendSms(char* szMobile);
+
 	int	VerifySmsCode(const char *szVerifyCode, const char *szMobile);					//匹配手机号与验证码
 
 private:
@@ -34,6 +37,7 @@ private:
 
 private:
 	int		SendVerifyCodeBySmsSdk(char *szMobile, int nCode); //下发验证码
+	int		SendVerifyCodeByRestAPI(char *szMobile, int nCode); //下发验证码
 	size_t send_sms(char *account, char *password, char *mobile, char *content);
 	size_t http_post(char *page, char *poststr);
 
