@@ -17,14 +17,14 @@
 #define MAXPARAM 2048
 
 //ihuyi.com短信接口
-char *szSmsHost = "106.ihuyi.com";
-char *send_sms_uri = "/webservice/sms.php?method=Submit&format=json";
+char *ihuyi_SmsHost = "106.ihuyi.com";
+char *ihuyi_send_sms_uri = "/webservice/sms.php?method=Submit&format=json";
 
 ///wxchina.com短信接口http_post服务器ip
-char *szRESTAPIHost = "116.31.71.146"; //电信
-//char *szRESTAPIHost = "122.13.18.210"; //联通
-//char *szRESTAPIHost = "183.232.76.34"; //移动
-char *rest_sms_uri = "/api/v1.0.0/message/mass/send";
+char *wxcn_RestApiHost = "116.31.71.146"; //电信
+//char *wxcn_RestApiHost = "122.13.18.210"; //联通
+//char *wxcn_RestApiHost = "183.232.76.34"; //移动
+char *wxcn_rest_sms_uri = "/api/v1.0.0/message/mass/send";
 
 static SOCKET m_Socket=NULL;
 static SOCKET m_Socket2=NULL;
@@ -69,7 +69,7 @@ int CSmsVerifyCode::HttpPostSms_ihuyi(char *szMobile)
 	//生成验证码
 	int nCode = MakeSmsCode(szMobile); 
 	//发送验证码
-	return SendVerifyCodeBySmsSdk(szMobile, nCode);
+	return SendVerifyCode_ihuyi(szMobile, nCode);
 }
 
 //通过wxchina.com接口下发短信验证码
@@ -78,29 +78,29 @@ int CSmsVerifyCode::HttpPostSms_wxcn(char* szMobile)
 	//生成验证码
 	int nCode = MakeSmsCode(szMobile); 
 	//发送验证码
-	SendVerifyCodeByRestAPI(szMobile, nCode);
+	SendVerifyCode_wxcn(szMobile, nCode);
 	return 0;
 }
 
 //构建 htttp_post 字符串
-int MakeHttpPostString(char *account, char *password, char *mobile, char *content, char* szBuffOut)
+int MakeIhuyiHttpPostString(char *account, char *password, char *mobile, char *content, char* szBuffOut)
 {
 	char params[MAXPARAM + 1];
     char *poststr = params;
     sprintf(poststr,"account=%s&password=%s&mobile=%s&format=xml&content=%s", account, password, mobile, content);
-	char *page = send_sms_uri;
+	char *page = ihuyi_send_sms_uri;
 
 	_snprintf(szBuffOut, MAXSUB,
         "POST %s HTTP/1.0\r\n"
         "Host: %s\r\n"
         "Content-type: application/x-www-form-urlencoded\r\n"
         "Content-length: %u\r\n\r\n"
-        "%s", page, szSmsHost, strlen(poststr), poststr);
+        "%s", page, ihuyi_SmsHost, strlen(poststr), poststr);
 
 	return 0;
 }
 
-int CSmsVerifyCode::SendVerifyCodeBySmsSdk(char *szMobile, int nCode)
+int CSmsVerifyCode::SendVerifyCode_ihuyi(char *szMobile, int nCode)
 {
 	
 	WSADATA wsd;
@@ -131,12 +131,12 @@ int CSmsVerifyCode::SendVerifyCodeBySmsSdk(char *szMobile, int nCode)
     //指定服务器地址
     server.sin_family = AF_INET;
     server.sin_port = htons(port);
-    server.sin_addr.s_addr = inet_addr(szSmsHost);
+    server.sin_addr.s_addr = inet_addr(ihuyi_SmsHost);
 
     if (server.sin_addr.s_addr == INADDR_NONE) {
-        host = gethostbyname(szSmsHost);    //输入的地址可能是域名等
+        host = gethostbyname(ihuyi_SmsHost);    //输入的地址可能是域名等
         if (host == NULL) {
-            printf("无法解析服务端地址: %s\n" , szSmsHost);
+            printf("无法解析服务端地址: %s\n" , ihuyi_SmsHost);
             return 1;
         }
         CopyMemory(&server.sin_addr ,
@@ -166,7 +166,7 @@ int CSmsVerifyCode::SendVerifyCodeBySmsSdk(char *szMobile, int nCode)
 	sprintf(content, message, nCode);
 
 	char* szBuffOut = Buffer;
-	MakeHttpPostString(account, password, mobile, content, szBuffOut);
+	MakeIhuyiHttpPostString(account, password, mobile, content, szBuffOut);
 
 	USES_CONVERSION;
 	int errcode = 0;
@@ -238,7 +238,7 @@ char* getMassJsonContent(const char *mobile, const char *content, char* szBuffOu
 	return szBuffOut;
 		
 
-	// char *formatStr  = "{\n" 
+ // char *formatStr  = "{\n" 
  //               "    \"batchName\": \"ZDTESTansi\",\n" 
  //               "    \"items\": [\n" 
  //               "        {\n" 
@@ -254,7 +254,7 @@ char* getMassJsonContent(const char *mobile, const char *content, char* szBuffOu
 }
 
 //构建 RestApi 字符串
-int MakeRestApiString(char *account, char *password, char *mobile, char *content, char* szBuffOut)
+int MakeWxcnRestApiString(char *account, char *password, char *mobile, char *content, char* szBuffOut)
 {
 	char params[MAXPARAM + 1]={0};
     char *poststr = params;
@@ -290,12 +290,12 @@ int MakeRestApiString(char *account, char *password, char *mobile, char *content
 		"Accept: application/json\n"
 		"Authorization: %s\n\n"
         "%s\n", 
-		rest_sms_uri, szRESTAPIHost, strlen(poststr),Authorization, poststr);
+		wxcn_rest_sms_uri, wxcn_RestApiHost, strlen(poststr),Authorization, poststr);
 
 	return 0;
 }
 
-int CSmsVerifyCode::SendVerifyCodeByRestAPI(char *szMobile, int nCode)
+int CSmsVerifyCode::SendVerifyCode_wxcn(char *szMobile, int nCode)
 {
 	
 	WSADATA wsd;
@@ -326,12 +326,12 @@ int CSmsVerifyCode::SendVerifyCodeByRestAPI(char *szMobile, int nCode)
     //指定服务器地址
     server.sin_family = AF_INET;
     server.sin_port = htons(9051);
-    server.sin_addr.s_addr = inet_addr(szRESTAPIHost);
+    server.sin_addr.s_addr = inet_addr(wxcn_RestApiHost);
 
     if (server.sin_addr.s_addr == INADDR_NONE) {
-        host = gethostbyname(szRESTAPIHost);    //输入的地址可能是域名等
+        host = gethostbyname(wxcn_RestApiHost);    //输入的地址可能是域名等
         if (host == NULL) {
-            printf("无法解析服务端地址: %s\n" , szRESTAPIHost);
+            printf("无法解析服务端地址: %s\n" , wxcn_RestApiHost);
             return 1;
         }
         CopyMemory(&server.sin_addr ,
@@ -367,7 +367,7 @@ int CSmsVerifyCode::SendVerifyCodeByRestAPI(char *szMobile, int nCode)
 	sprintf(content, message, nCode);
 
 	char* szBuffOut = Buffer;
-	MakeRestApiString(account, password, mobile, content, szBuffOut);
+	MakeWxcnRestApiString(account, password, mobile, content, szBuffOut);
 
     //发送、接收消息
     for (;;) 
@@ -463,15 +463,7 @@ int	CSmsVerifyCode::MakeSmsCode(const char *szMobile)
 	return nCode;
 }
 
-//通过第三方SDK发送短信验证码给用户手机
-int	CSmsVerifyCode::SendSmsCode(tagSmsCode *pSmsCode)			
-{
-	char szCode[20]={0};
-	itoa(pSmsCode->nRandCode, szCode, 10);
-	//http_post(szCode);
 
-	return 0;
-}
 
 //匹配手机号与验证码,返回0表示成功
 int	CSmsVerifyCode::VerifySmsCode(const char *szVerifyCode, const char *szMobile)			

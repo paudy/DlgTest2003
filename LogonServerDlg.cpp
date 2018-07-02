@@ -112,11 +112,11 @@ VOID CLogonServerDlg::OnBnClickedStartService()
 	
 	CSmsVerifyCode sms_wrap;
 	//sms_wrap.HttpPostSms_ihuyi("18850067319");
-	sms_wrap.HttpPostSms_wxcn("18850067319");
+	//sms_wrap.HttpPostSms_wxcn("18850067319");
 
 	//zdTestParseJson();
 
-	//zdTestConstructJson();
+	zdTestConstructJson();
 
 	return;
 }
