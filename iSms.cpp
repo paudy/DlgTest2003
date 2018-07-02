@@ -20,18 +20,19 @@
 char *szSmsHost = "106.ihuyi.com";
 char *send_sms_uri = "/webservice/sms.php?method=Submit&format=json";
 
-///玄武短信接口http_post服务器ip
+///wxchina.com短信接口http_post服务器ip
 char *szRESTAPIHost = "116.31.71.146"; //电信
 //char *szRESTAPIHost = "122.13.18.210"; //联通
 //char *szRESTAPIHost = "183.232.76.34"; //移动
 char *rest_sms_uri = "/api/v1.0.0/message/mass/send";
 
-SOCKET m_Socket=NULL;
-SOCKET m_Socket2=NULL;
+static SOCKET m_Socket=NULL;
+static SOCKET m_Socket2=NULL;
 
 CSmsVerifyCode::CSmsVerifyCode()
 {
 	m_Socket = NULL;
+	m_Socket2 = NULL;
 	//初始化socket
 	WSADATA wsd;
 	if (WSAStartup(MAKEWORD(2 , 2) , &wsd) != 0) 
@@ -63,7 +64,7 @@ CSmsVerifyCode::~CSmsVerifyCode()
 }
 
 //通过ihuyi.com SDK接口下发短信验证码
-int CSmsVerifyCode::HttpPostSms(char *szMobile)
+int CSmsVerifyCode::HttpPostSms_ihuyi(char *szMobile)
 {
 	//生成验证码
 	int nCode = MakeSmsCode(szMobile); 
@@ -72,7 +73,7 @@ int CSmsVerifyCode::HttpPostSms(char *szMobile)
 }
 
 //通过wxchina.com接口下发短信验证码
-int CSmsVerifyCode::RestApiSendSms(char* szMobile)
+int CSmsVerifyCode::HttpPostSms_wxcn(char* szMobile)
 {
 	//生成验证码
 	int nCode = MakeSmsCode(szMobile); 

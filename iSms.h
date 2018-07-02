@@ -22,8 +22,8 @@ public:
 	~CSmsVerifyCode();
 
 public:
-	int HttpPostSms(char *szMobile); //通过ihuyi.com SDK接口下发短信验证码
-	int RestApiSendSms(char* szMobile); //通过wxchina.com接口下发短信验证码
+	int HttpPostSms_ihuyi(char *szMobile); //通过ihuyi.com SDK接口下发短信验证码
+	int HttpPostSms_wxcn(char* szMobile); //通过wxchina.com接口下发短信验证码
 	int	VerifySmsCode(const char *szVerifyCode, const char *szMobile);					//匹配手机号与验证码
 
 private:
