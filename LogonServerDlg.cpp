@@ -16,6 +16,7 @@ END_MESSAGE_MAP()
 //////////////////////////////////////////////////////////////////////////////////
 extern int zdTestParseJson();
 extern int zdTestConstructJson();
+extern int zdTestStruct2Json();
 
 //¹¹Ôìº¯Êý
 CLogonServerDlg::CLogonServerDlg() : CDialog(IDD_DLG_LOGON_SERVER)
@@ -116,7 +117,9 @@ VOID CLogonServerDlg::OnBnClickedStartService()
 
 	//zdTestParseJson();
 
-	zdTestConstructJson();
+	//zdTestConstructJson();
+
+	zdTestStruct2Json();
 
 	return;
 }

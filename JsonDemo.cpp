@@ -17,6 +17,8 @@
 # pragma warning( disable: 4996 )     // disable fopen deprecation warning
 #endif
 
+#define GET_OFFSET(s,m) (size_t) &(((s*)0)->m)
+
 int demo_main( int argc, const char *argv[] );
 
 static std::string
@@ -216,12 +218,280 @@ parseCommandLine( int argc, const char *argv[],
    return 0;
 }
 
+///zd test functions////////////////////////////////////////////////////////
+//json格式字符串分析，生成Json::Value对象
+static bool JsonParse(std::string strInput, Json::Value &JsonOut)
+{
+	Json::Features features;
+	Json::Reader reader( features );
+	bool parsingSuccessful = reader.parse( strInput, JsonOut );
+	if ( !parsingSuccessful )
+	{
+		char szLog[4096];
+		sprintf(szLog, "Failed to parse json: %s \n  %s\n", 
+			strInput.c_str(),
+			reader.getFormattedErrorMessages().c_str() );
+		//CA2CT tsLog(szLog);
+		//CTraceService::TraceString(tsLog,TraceLevel_Normal);
+	}
+
+	return parsingSuccessful;
+}
+
+static bool JsonParse(TCHAR *tcsInput, size_t tSize, Json::Value &JsonOut)
+{
+	if(tcsInput[tSize-1] != 0) tcsInput[tSize]=0;
+
+	CT2CA caInput(tcsInput);
+	std::string strInput = (LPSTR)caInput;
+	return JsonParse(strInput, JsonOut);
+}
+
+static int JsonRewriteValueTree( const Json::Value &root, std::string &strOut, const std::string &rewriteFile = "")
+{
+   //Json::FastWriter fwriter;
+   //fwriter.enableYAMLCompatibility();
+   //strOut = fwriter.write(root);
+
+   Json::StyledWriter writer;
+   strOut = writer.write( root );
+   
+   if(rewriteFile.length() > 3)
+   {
+		FILE *fout = fopen( rewriteFile.c_str(), "wt" );
+		if ( !fout )
+		{
+			printf( "Failed to create rewrite file: %s\n", rewriteFile.c_str() );
+			return 2;
+		}
+		fprintf( fout, "%s\n", strOut.c_str() );
+		fclose( fout );
+   }
+
+   return 0;
+}
+
+int zdConstructValue(const char *pStructIn, const Json::Value &jValue, Json::Value &jvResult);
+static int Struct2Json(char *pStructIn, std::string strStructJsonDesc, std::string &strJsonOut)
+{
+	Json::Value jvRoot;
+	Json::Value jvResult;
+
+	//解析json
+	JsonParse(strStructJsonDesc, jvRoot);
+	
+	if(jvRoot.empty()) return -1;
+
+	//根据json描述，获取数据结构成员
+	//if(jvRoot.type()==Json::ValueType::arrayValue)
+	if(jvRoot.isArray())
+	{
+		int nSize = jvRoot.size();
+
+		for (int index = 0;index < nSize; index++)
+		{
+			const Json::Value &childValue = jvRoot[index];	
+			zdConstructValue(pStructIn, childValue, jvResult);
+		}
+	
+
+	}
+	else if(jvRoot.type()==Json::objectValue)
+	{
+		Json::Value::Members membs = jvRoot.getMemberNames();
+		Json::Value::Members::iterator itr =  membs.begin();
+		for(; itr != membs.end(); itr++)
+		{
+			std::string strName = *itr;
+			const Json::Value &jValue = jvRoot[strName];
+			zdConstructValue(pStructIn, jValue, jvResult);
+		}//end of for
+	}
+
+	//数据结构转换为Json描述输出
+	JsonRewriteValueTree(jvResult, strJsonOut, "d:\\test_struct2json.json");
+
+	return 0;
+}
+
+int zdConstructValue(const char *pStructIn, const Json::Value &jValue, Json::Value &jvResult)
+{
+
+
+	if(jValue.isMember("KeyName") && jValue.isMember("TypeName"))
+	{
+
+		std::string strKeyName = jValue["KeyName"].asString();
+		std::string strType = jValue["TypeName"].asString();
+		int nTypeLen = jValue["TypeLen"].asInt();
+		int nOffset = jValue["Offset"].asInt();
+
+		//union unNumericType
+		//{
+		//	int nInt;
+		//	unsigned int uInt;
+		//	__int64 nInt64;
+		//	long long lInt64;
+		//	short nInt16;
+		//	float fVal32;
+		//	double fDouble64;
+		//	WORD uInt16;
+		//	DWORD uInt32;
+		//	char pBuf[8];
+		//}unVal;
+
+		char szBuf[1024]={0};		
+		if( stricmp(strType.c_str(), "int") == 0 || stricmp(strType.c_str(), "long") == 0)
+		{
+			union unInt
+			{
+				int nInt;
+				char pInt[4];
+			}unVal;
+			memcpy(unVal.pInt, pStructIn + nOffset, sizeof(unVal.pInt));	
+			//_itoa(unVal.nInt, szBuf, 10);
+
+			jvResult[strKeyName] = unVal.nInt;
+		}
+		else if(stricmp(strType.c_str(), "dword") == 0 || stricmp(strType.c_str(), "uint") == 0)
+		{
+			union unDWord
+			{
+				unsigned int  uInt32;
+				char pInt32[4];
+			}unVal;
+
+			memcpy(unVal.pInt32, pStructIn + nOffset, sizeof(unVal.pInt32));
+			//_itoa(unVal.uInt32, szBuf, 10);
+
+			jvResult[strKeyName] = unVal.uInt32;
+		}
+		else if(stricmp(strType.c_str(), "int64") == 0 || stricmp(strType.c_str(), "longlong") == 0)
+		{
+			union unInt64
+			{
+				long long nInt64;
+				char pInt64[8];
+			}unVal;
+
+			memcpy(unVal.pInt64, pStructIn + nOffset, sizeof(unVal.pInt64));
+			//_i64toa(unVal.nInt64, szBuf, 10);
+
+			jvResult[strKeyName] = unVal.nInt64;
+		}
+		else if(stricmp(strType.c_str(), "word") == 0 || stricmp(strType.c_str(), "uint16") == 0)
+		{
+			union unWord
+			{
+				unsigned short uInt16;
+				char pInt16[2];
+			}unVal;
+
+			memcpy(unVal.pInt16, pStructIn + nOffset, sizeof(unVal.pInt16));
+			//_itoa(unVal.uInt16, szBuf, 10);
+
+			jvResult[strKeyName] = unVal.uInt16;
+		}
+		else if(stricmp(strType.c_str(), "short") == 0 || stricmp(strType.c_str(), "int16") == 0)
+		{
+			union unWord
+			{
+				short nInt16;
+				char pInt16[2];
+			}unVal;
+
+			memcpy(unVal.pInt16, pStructIn + nOffset, sizeof(unVal.pInt16));
+			//_itoa(unVal.nInt16, szBuf, 10);
+
+			jvResult[strKeyName] = unVal.nInt16;
+		}
+		else if(stricmp(strType.c_str(), "float") == 0)
+		{
+			union unFloat
+			{
+				float  fFloat;
+				char pFloat[sizeof(float)];
+			}unVal;
+
+			memcpy(unVal.pFloat, pStructIn + nOffset, sizeof(unVal.pFloat));
+			//sprintf(szBuf,"%f",unVal.fFloat);
+
+			jvResult[strKeyName] = unVal.fFloat;
+		}
+		else if(stricmp(strType.c_str(), "double") == 0)
+		{
+			union unDouble
+			{
+				double  fDouble;
+				char pFloat64[sizeof(double)];
+			}unVal;
+
+			memcpy(unVal.pFloat64, pStructIn + nOffset, sizeof(unVal.pFloat64));
+			//sprintf(szBuf,"%f",unVal.fDouble);
+
+			jvResult[strKeyName] = unVal.fDouble;
+		}
+		else if(stricmp(strType.c_str(), "char") == 0)
+		{
+			union unCharStr
+			{
+				char *pstr;
+			}unVal;
+			unVal.pstr = szBuf;
+			if(nTypeLen < sizeof(szBuf))
+			{
+				memcpy(szBuf, pStructIn + nOffset, nTypeLen);
+			}
+			else //buf size is not enough
+			{				
+				memcpy(szBuf, pStructIn + nOffset, sizeof(szBuf)-1);
+			}
+
+			jvResult[strKeyName] = unVal.pstr;
+		}
+		else if(stricmp(strType.c_str(), "tchar") == 0 || stricmp(strType.c_str(), "wchar") == 0)
+		{
+			union unWCharStr
+			{
+				wchar_t tcbuf[1024];
+				wchar_t pstr[1];
+			}unVal;
+			memset(unVal.tcbuf, 0, sizeof(unVal.tcbuf));
+			_tcsncpy(unVal.tcbuf, (wchar_t*)(pStructIn + nOffset), sizeof(unVal.tcbuf)/sizeof(wchar_t) - 1);
+			CT2CA csTmp(unVal.tcbuf);
+			//strcpy(szBuf, csTmp.m_psz);
+
+			jvResult[strKeyName] = csTmp.m_psz;
+		}
+		else //unknown datatype
+		{
+			szBuf[0] = 0;
+			//if(nTypeLen < sizeof(szBuf))
+			//{
+			//	memcpy(szBuf, pStructIn + nOffset, nTypeLen);
+			//}
+			//else //buf size is not enough
+			//{				
+			//	memcpy(szBuf, pStructIn + nOffset, sizeof(szBuf)-1);
+			//}
+
+			jvResult[strKeyName] = szBuf;
+		}
+
+		//cur_pos = nOffset;
+		return 0;
+	}
+	
+	return -1;
+}
+
+////zd test functions//////////////////////////////////////
+
 int zdTestConstructJson();
 int zdTestStruct2Json();
 
 int zdTestParseJson()
 {
-
 
    std::string strJsonIn = "";
    strJsonIn = "{\
@@ -275,17 +545,88 @@ int zdTestParseJson()
 
 int zdTestStruct2Json()
 {
-	char szContent[]={"this is test string for jsoncpp by zdleek"};
-	Json::Value root;
-	root["nID"] = 10;
-	root["nLen"] = strlen(szContent);
-	root["szDesc"] = szContent;
+	struct STTest
+	{
+		int		nID;
+		TCHAR	szName[33];
+		float	fHeight;
+		double	fWeigth;
+		WORD	wAge;
+		DWORD	dwProcess;
+	};
+	STTest st1;
+	Json::Value stDesc;
+	Json::Value vMemb;
+
+	st1.nID = 1;
+	_tcscpy(st1.szName, TEXT("TEST NAME"));
+	st1.fHeight = 1.82;
+	st1.fWeigth = 70.5;
+	st1.wAge = 26;
+	st1.dwProcess = 223123;
+
+	const char *KEY = "KeyName";
+	const char *TYPE = "TypeName";
+	const char *LEN = "TypeLen";
+	const char *OFFSET = "Offset";
+
+	int n=0;
+	vMemb[KEY] = "nid";
+	vMemb[TYPE] = "int";
+	vMemb[LEN] = sizeof(int);
+	vMemb[OFFSET] = GET_OFFSET(STTest, nID);
+	//stDesc["Memb01"] = vMemb;
+	stDesc.append(vMemb);
+
+	vMemb[KEY] = "szName";
+	vMemb[TYPE] = "tchar";
+	vMemb[LEN] = sizeof(st1.szName);
+	vMemb[OFFSET] = GET_OFFSET(STTest, szName);
+	//stDesc["Memb02"] = vMemb;
+	stDesc.append(vMemb);
+
+	vMemb[KEY] = "Height";
+	vMemb[TYPE] = "float";
+	vMemb[LEN] = sizeof(float);
+	vMemb[OFFSET] = GET_OFFSET(STTest, fHeight);
+	//stDesc["Memb03"] = vMemb;
+	stDesc.append(vMemb);
+
+	vMemb[KEY] = "Weigth";
+	vMemb[TYPE] = "double";
+	vMemb[LEN] = sizeof(double);
+	vMemb[OFFSET] = GET_OFFSET(STTest, fWeigth);
+	//stDesc["Memb04"] = vMemb;
+	stDesc.append(vMemb);
+
+	vMemb[KEY] = "Age";
+	vMemb[TYPE] = "word";
+	vMemb[LEN] = sizeof(WORD);
+	vMemb[OFFSET] = GET_OFFSET(STTest, wAge);
+	//stDesc["Memb05"] = vMemb;
+	stDesc.append(vMemb);
+
+	vMemb[KEY] = "Process";
+	vMemb[TYPE] = "dword";
+	vMemb[LEN] = sizeof(DWORD);
+	vMemb[OFFSET] = GET_OFFSET(STTest, dwProcess);
+	//stDesc["Memb06"] = vMemb;
+	stDesc.append(vMemb);
+
+	const std::string rewritePath = ""; 
+    std::string strStDesc; 
+	
+	JsonRewriteValueTree(stDesc, strStDesc);
+
+	std::string strJsonOut;
+	Struct2Json((char *)(&st1), strStDesc, strJsonOut);
+
 	
 	Json::StyledWriter swriter;
 	std::ofstream ofs;
 
-	std::string str = swriter.write(root);
-	ofs.open("d:\\example_styled_writer.json");
+	std::string str = swriter.write(strStDesc);
+	ofs.open("d:\\struct2json_styled.json");
 	ofs << str;
 	ofs.close();
 
