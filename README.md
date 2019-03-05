@@ -1,2 +1,2 @@
 # DlgTest2003
-CPP Dlg application for test, with MS VS2003
+CPP Dlg application for test, compile with MS VC++2003
