@@ -151,14 +151,14 @@ int CSmsVerifyCode::SendVerifyCode_ihuyi(char *szMobile, int nCode)
     }
 	
     //用户名是登录用户中心->验证码短信->产品总览->APIID
-    char *account = "C44034602";
+    char *account = "C02806127";
 
     //查看密码请登录用户中心->验证码短信->产品总览->APIKEY
-    char *password = "972ae1c34bda81ca1f0564026e12cdc4";
+    char *password = "f1f5a7639f25e9ba06b415bc57a5b7b0";
 
     //手机号
 	char mobile[12] ={0};
-	strncpy(mobile, szMobile, sizeof(mobile)); //"18850067319";
+	strncpy(mobile, szMobile, sizeof(mobile)); 
 
     //短信内容
 	char *message = "您的验证码是：%06d。请不要把验证码泄露给其他人。";
